@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
     //console.log(url.pathname);
     
     if (url.pathname != '/pay/webhook/url'){
-        throw new Deno.errors.NotFound("Route Not Found")
+        return Response.json("Welcome to paystack webhook",{status:200});
         
     }
     // deno-lint-ignore no-explicit-any
