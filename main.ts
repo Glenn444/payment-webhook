@@ -3,9 +3,9 @@ import "jsr:@std/dotenv/load";
 
 
 const secret = Deno.env.get("SECRET")
-// if (secret == undefined){
-// throw new Deno.errors.NotFound("Please Provide a secret")
-// }
+if (secret == undefined){
+throw new Deno.errors.NotFound("Please Provide a secret")
+}
 
 
 Deno.serve(async (req) => {
@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
         
     }
 
-    const hash = crypto.createHmac('sha512',secret??"").update(JSON.stringify(event)).digest('hex')
+    const hash = crypto.createHmac('sha512',secret).update(JSON.stringify(event)).digest('hex')
     console.log(hash);
     
    if (hash == req.headers.get('x-paystack-signature')){
