@@ -51,7 +51,7 @@ interface PaymentRequestWebhookEvent {
 
 const secret = Deno.env.get("PAYSTACK_SECRET_KEY")
 if (secret == undefined) {
-    throw new Deno.errors.NotFound("Please Provide a Paystack Secret Key")
+    throw new Deno.errors.NotFound("Please provide a Paystack Secret Key")
 }
 
 
@@ -84,6 +84,5 @@ Deno.serve(async (req) => {
     }
 
     return Response.json('unauthorized request', { status: 401 });
-
 
 });
