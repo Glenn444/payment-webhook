@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
 
         if (hash == req.headers.get('x-paystack-signature')) {
             //Use the event after validating the request
-            console.log(event?.event);
+            console.log(event);
             return Response.json(event, { status: 200 });
 
         }
