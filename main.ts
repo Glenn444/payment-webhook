@@ -1,100 +1,72 @@
 import * as crypto from "node:crypto"
 import "jsr:@std/dotenv/load";
-//import { createClient } from 'jsr:@supabase/supabase-js@2'
-
-
-interface PaymentNotification {
-    sent_at: string; // ISO 8601 datetime string
-    channel: 'email' | 'sms' | 'webhook' | string; // Common channels, extensible
-}
-
-// Line item interface for itemized billing
-interface LineItem {
-    name: string;
-    amount: number;
-    quantity?: number;
-    description?: string;
-}
-
-// Tax information interface
-interface TaxInfo {
-    name: string;
-    amount: number;
-    rate?: number; // Tax rate as percentage
-}
-
-// Main payment request data interface
-interface PaymentRequestData {
-    id: number;
-    domain: string;
-    amount: number; // Amount in smallest currency unit (kobo for NGN)
-    currency: string; // ISO 4217 currency code
-    due_date: string | null; // ISO 8601 datetime string or null
-    has_invoice: boolean;
-    invoice_number: string | null;
-    description: string;
-    pdf_url: string | null; // URL to PDF invoice/receipt
-    line_items: LineItem[]; // Array of itemized charges
-    tax: TaxInfo[]; // Array of tax information
-    request_code: string; // Unique payment request identifier
-    status: 'pending' | 'success' | 'failed' | 'cancelled' | string; // Payment status
-    paid: boolean;
-    paid_at: string | null; // ISO 8601 datetime string or null
-    // deno-lint-ignore no-explicit-any
-    metadata: Record<string, any> | null; // Flexible metadata object
-    notifications: PaymentNotification[]; // Array of sent notifications
-    offline_reference: string; // Internal reference number
-    customer: number; // Customer ID reference
-    created_at: string; // ISO 8601 datetime string
-}
-interface PaymentRequestWebhookEvent {
-    event: 'paymentrequest.success' | 'paymentrequest.failed' | 'paymentrequest.pending' | string;
-    data: PaymentRequestData;
-}
+import { PaystackWebhookEvent } from "./types.ts";
+import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const secret = Deno.env.get("PAYSTACK_SECRET_KEY")
-if (secret == undefined) {
-    throw new Deno.errors.NotFound("Please provide a Paystack Secret Key")
+if (!secret) {
+    throw new Error("Please provide a Paystack Secret Key")
 }
 
+const supabaseUrl = Deno.env.get('SUPABASE_URL')
+const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')
+
+if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Please provide Supabase URL and Anon Key")
+}
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 Deno.serve(async (req) => {
     try {
         const url = new URL(req.url);
-        // const supabase = createClient(
-        //     Deno.env.get('SUPABASE_URL') ?? '',
-        //     Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-        //     { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-        // )
-        if (url.pathname != '/pay/webhook/url' || req.method != "POST") {
+       
+        if (url.pathname !== '/pay/webhook/url' || req.method !== "POST") {
             return Response.json("Welcome to paystack payment Webhook", { status: 200 });
-
         }
 
-        let event: PaymentRequestWebhookEvent | undefined
-
-        if (req.body) {
-            event = await req.json()
-
-
+        // Get raw body for signature verification
+        const rawBody = await req.text();
+        
+        if (!rawBody) {
+            return Response.json('No request body', { status: 400 });
         }
 
-        const hash = crypto.createHmac('sha512', secret).update(JSON.stringify(event)).digest('hex')
+        // Verify webhook signature
+        const hash = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
+        const signature = req.headers.get('x-paystack-signature');
 
-        // console.log(hash);
-
-        if (hash == req.headers.get('x-paystack-signature')) {
-            //Use the event after validating the request
-            console.log(event);
-            return Response.json(event, { status: 200 });
-
+        if (hash !== signature) {
+            //console.log('Signature mismatch:', { hash, signature });
+            return Response.json('Unauthorized request', { status: 401 });
         }
 
-        return Response.json('unauthorized request', { status: 401 });
+        // Parse the event after signature verification
+        const event: PaystackWebhookEvent = JSON.parse(rawBody);
+        
+        // Insert into Supabase
+        const {  error } = await supabase
+            .from("payment_webhooks")
+            .insert({
+                event_type: event?.event,
+                transaction_id: event?.data?.id,
+                customer_email: event?.data?.customer?.email,
+                customer_fname: event?.data?.metadata.user.first_name,
+                customer_lname:event?.data.metadata.user.last_name,
+                services:event.data.metadata.user.services,
+                customer_phone:event.data.metadata.user.phone
+            });
 
-    } catch (error) {
-        console.error(error)
-        return Response.json(error, { status: 500 })
+        if (error) {
+            console.error('Supabase error:', error);
+            return Response.json({ error: 'Database insertion failed' }, { status: 500 });
+        }
+
+        
+        return Response.json({success:true} ,{ status: 200 });
+
+    // deno-lint-ignore no-explicit-any
+    } catch (error:any) {
+        console.error('Webhook error:', error);
+        return Response.json({ error: error.message }, { status: 500 });
     }
-
 });
