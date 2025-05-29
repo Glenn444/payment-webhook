@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
         const signature = req.headers.get('x-paystack-signature');
 
         if (hash !== signature) {
-            console.log('Signature mismatch:', { hash, signature });
+            //console.log('Signature mismatch:', { hash, signature });
             return Response.json('Unauthorized request', { status: 401 });
         }
 
