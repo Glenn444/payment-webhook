@@ -2,6 +2,7 @@ import * as crypto from "node:crypto"
 import "jsr:@std/dotenv/load";
 import { PaystackWebhookEvent } from "./types.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { json } from "node:stream/consumers";
 
 const secret = Deno.env.get("PAYSTACK_SECRET_KEY")
 if (!secret) {
@@ -25,23 +26,25 @@ Deno.serve(async (req) => {
         }
 
         // Get raw body for signature verification
-        const rawBody =  await req.json();
+     
+        const rawBodyBuffer =   await req.arrayBuffer();
+        const rawBody = new TextDecoder().decode(rawBodyBuffer)
         
         if (!rawBody) {
             return Response.json('No request body', { status: 400 });
         }
 
         // Verify webhook signature
-        const hash = crypto.createHmac('sha512', secret).update(JSON.stringify(rawBody)).digest('hex');
+        const hash = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
         const signature = req.headers.get('x-paystack-signature');
 
         if (hash !== signature) {
             console.log('Signature mismatch:', { hash, signature });
-            return Response.json('Unauthorized request', { status: 401 });
+            return Response.json('OK', { status: 200 });
         }
 
         // Parse the event after signature verification
-        const event: PaystackWebhookEvent = rawBody;
+        const event: PaystackWebhookEvent = JSON.parse(rawBody);
         
         // Insert into Supabase
         const {  error } = await supabase
