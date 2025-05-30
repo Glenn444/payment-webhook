@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
         }
 
         // Verify webhook signature
-        const hash = crypto.createHmac('sha512', secret).update(rawBody).digest('hex');
+        const hash = crypto.createHmac('sha512', secret).update(JSON.stringify(rawBody)).digest('hex');
         const signature = req.headers.get('x-paystack-signature');
 
         if (hash !== signature) {
