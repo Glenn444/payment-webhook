@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
         }
 
         // Get raw body for signature verification
-        const rawBody = await req.text();
+        const rawBody =  await req.json();
         
         if (!rawBody) {
             return Response.json('No request body', { status: 400 });
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
         }
 
         // Parse the event after signature verification
-        const event: PaystackWebhookEvent = JSON.parse(rawBody);
+        const event: PaystackWebhookEvent = rawBody;
         
         // Insert into Supabase
         const {  error } = await supabase
