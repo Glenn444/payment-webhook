@@ -2,9 +2,10 @@ import * as crypto from "node:crypto"
 import "jsr:@std/dotenv/load";
 import { PaystackWebhookEvent } from "./types.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-import { json } from "node:stream/consumers";
 
 const secret = Deno.env.get("PAYSTACK_SECRET_KEY")
+console.log(secret);
+
 if (!secret) {
     throw new Error("Please provide a Paystack Secret Key")
 }
@@ -27,8 +28,7 @@ Deno.serve(async (req) => {
 
         // Get raw body for signature verification
      
-        const rawBodyBuffer =   await req.arrayBuffer();
-        const rawBody = new TextDecoder().decode(rawBodyBuffer)
+        const rawBody = await req.text();
         
         if (!rawBody) {
             return Response.json('No request body', { status: 400 });
