@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
             .from("payment_webhooks")
             .insert({
                 event_type: event?.event,
-                transaction_id: event?.data?.id,
+                transaction_reference: event?.data?.reference,
                 customer_email: event?.data?.customer?.email,
                 customer_fname: event?.data?.metadata.user.first_name,
                 customer_lname:event?.data.metadata.user.last_name,
