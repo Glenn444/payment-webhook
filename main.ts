@@ -4,7 +4,6 @@ import { PaystackWebhookEvent } from "./types.ts";
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const secret = Deno.env.get("PAYSTACK_SECRET_KEY")
-console.log(secret);
 
 if (!secret) {
     throw new Error("Please provide a Paystack Secret Key")
@@ -40,7 +39,7 @@ Deno.serve(async (req) => {
 
         if (hash !== signature) {
             console.log('Signature mismatch:', { hash, signature });
-            return Response.json('OK', { status: 200 });
+            return Response.json('Unauthorized access', { status: 401 });
         }
 
         // Parse the event after signature verification
